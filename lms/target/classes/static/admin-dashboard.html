@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LMS — Admin Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0c10;
+      --surface:   #10131a;
+      --border:    #1c1f2c;
+      --gold:      #c9a84c;
+      --gold-dim:  #7a6230;
+      --text:      #e8e6e0;
+      --muted:     #6b7280;
+      --danger:    #c0392b;
+      --success:   #27ae60;
+      --pending:   #d4a017;
+      --approved:  #27ae60;
+      --rejected:  #c0392b;
+      --closed:    #4a5568;
+      --defaulted: #e67e22;
+      --sw: 256px;
+    }
+
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; display: flex; min-height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sw); background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top:0; left:0; bottom:0; z-index:100;
+    }
+
+    .sidebar-logo { padding: 24px 22px 16px; border-bottom: 1px solid var(--border); }
+    .logo-inline { display: flex; align-items: center; gap: 10px; }
+    .logo-box { width:34px; height:34px; border:1.5px solid var(--gold); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:'DM Serif Display',serif; font-size:15px; color:var(--gold); }
+    .logo-text { font-family:'DM Serif Display',serif; font-size:18px; }
+    .logo-sub-text { font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-top:2px; }
+
+    .admin-badge {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      background: rgba(201,168,76,0.06); position: relative;
+    }
+    .admin-badge::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--gold); }
+    .role-tag { font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--gold); font-family:'DM Mono',monospace; margin-bottom:4px; }
+    .uname { font-size:14px; font-weight:500; font-family:'DM Mono',monospace; }
+
+    nav { flex:1; padding:12px 0; overflow-y:auto; }
+    .nav-label { font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); padding:0 20px; margin:12px 0 3px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:10px 20px; cursor:pointer; color:var(--muted); font-size:13px; border-left:2px solid transparent; transition:all 0.15s; user-select:none; }
+    .nav-item:hover { color:var(--text); background:rgba(255,255,255,0.02); }
+    .nav-item.active { color:var(--gold); border-left-color:var(--gold); background:rgba(201,168,76,0.06); font-weight:500; }
+    .nav-item .ic { width:16px; text-align:center; font-size:13px; }
+
+    .sidebar-footer { padding:14px 20px; border-top:1px solid var(--border); }
+    .logout-btn { display:flex; align-items:center; gap:8px; color:var(--muted); cursor:pointer; font-size:12px; transition:color 0.15s; }
+    .logout-btn:hover { color:var(--danger); }
+
+    /* ── MAIN ── */
+    .main { margin-left:var(--sw); flex:1; display:flex; flex-direction:column; min-height:100vh; }
+
+    .topbar { height:54px; border-bottom:1px solid var(--border); background:var(--surface); display:flex; align-items:center; justify-content:space-between; padding:0 30px; position:sticky; top:0; z-index:50; }
+    .page-title { font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+    .topbar-right { display:flex; align-items:center; gap:12px; font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); }
+    .admin-chip { background:rgba(201,168,76,0.12); color:var(--gold); padding:3px 10px; font-size:9px; letter-spacing:0.2em; text-transform:uppercase; font-family:'DM Mono',monospace; }
+    .live-dot { width:6px; height:6px; background:var(--success); border-radius:50%; animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .content { flex:1; padding:30px; }
+
+    .panel { display:none; animation:fadeIn 0.25s ease; }
+    .panel.active { display:block; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    .panel-title { font-family:'DM Serif Display',serif; font-size:26px; margin-bottom:6px; }
+    .panel-desc { color:var(--muted); font-size:13px; margin-bottom:24px; }
+
+    /* stats */
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:13px; margin-bottom:28px; }
+    .stat-card { background:var(--surface); border:1px solid var(--border); padding:18px 20px; position:relative; }
+    .stat-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:var(--gold); }
+    .stat-lbl { font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+    .stat-val { font-family:'DM Serif Display',serif; font-size:26px; }
+    .stat-hint { font-size:10px; color:var(--muted); margin-top:3px; font-family:'DM Mono',monospace; }
+
+    .sec-head { font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; padding-bottom:9px; border-bottom:1px solid var(--border); }
+
+    /* form */
+    .form-card { background:var(--surface); border:1px solid var(--border); padding:28px; max-width:460px; }
+    .form-card + .form-card { margin-top:20px; }
+    .field { margin-bottom:16px; }
+    .field-row { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+    label { display:block; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+    input, select {
+      width:100%; background:var(--bg); border:1px solid var(--border);
+      color:var(--text); padding:10px 13px; font-family:'DM Mono',monospace; font-size:13px; outline:none; transition:border-color 0.2s; appearance:none;
+    }
+    input:focus, select:focus { border-color:var(--gold); }
+
+    .btn { padding:10px 24px; background:var(--gold); color:#0a0c10; font-family:'Outfit',sans-serif; font-weight:600; font-size:12px; letter-spacing:0.12em; text-transform:uppercase; border:none; cursor:pointer; transition:opacity 0.2s; }
+    .btn:hover { opacity:0.84; }
+    .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--muted); }
+    .btn-ghost:hover { border-color:var(--gold); color:var(--gold); opacity:1; }
+    .btn-danger { background:var(--danger); color:#fff; }
+    .btn-success { background:var(--success); color:#fff; }
+
+    .msg { margin-top:12px; padding:9px 13px; font-size:12px; font-family:'DM Mono',monospace; border-left:2px solid var(--muted); background:rgba(255,255,255,0.02); display:none; }
+    .msg.success { border-color:var(--success); color:var(--success); }
+    .msg.error   { border-color:var(--danger);  color:var(--danger); }
+    .msg.show    { display:block; }
+
+    .warn-box { background:rgba(192,57,43,0.08); border:1px solid rgba(192,57,43,0.22); padding:11px 14px; font-size:12px; color:var(--danger); font-family:'DM Mono',monospace; margin-bottom:18px; }
+
+    /* search row */
+    .search-row { display:flex; gap:11px; margin-bottom:18px; align-items:flex-end; flex-wrap:wrap; }
+    .search-row input { max-width:260px; }
+
+    /* table */
+    .tbl { width:100%; border-collapse:collapse; }
+    .tbl th { text-align:left; padding:9px 13px; font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); background:var(--surface); }
+    .tbl td { padding:12px 13px; border-bottom:1px solid rgba(28,31,44,0.6); font-family:'DM Mono',monospace; font-size:12px; }
+    .tbl tr:hover td { background:rgba(255,255,255,0.012); }
+
+    .badge { display:inline-block; padding:2px 8px; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; font-family:'DM Mono',monospace; }
+    .b-USER      { background:rgba(100,116,139,0.15); color:#94a3b8; }
+    .b-ADMIN     { background:rgba(201,168,76,0.15);  color:var(--gold); }
+    .b-PENDING   { background:rgba(212,160,23,.15);   color:var(--pending); }
+    .b-APPROVED  { background:rgba(39,174,96,.15);    color:var(--approved); }
+    .b-REJECTED  { background:rgba(192,57,43,.15);    color:var(--rejected); }
+    .b-CLOSED    { background:rgba(74,85,104,.25);    color:var(--closed); }
+    .b-DEFAULTED { background:rgba(230,126,34,.15);   color:var(--defaulted); }
+
+    .act-btn { padding:4px 10px; background:transparent; border:1px solid var(--border); color:var(--muted); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; margin-right:3px; white-space:nowrap; }
+    .act-btn:hover           { border-color:var(--gold);    color:var(--gold); }
+    .act-btn.ap:hover        { border-color:var(--success); color:var(--success); }
+    .act-btn.rj:hover        { border-color:var(--danger);  color:var(--danger); }
+    .act-btn.term:hover      { border-color:var(--danger);  color:var(--danger); }
+
+    .empty { color:var(--muted); font-size:13px; padding:20px 0; }
+    .loading { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:12px; font-family:'DM Mono',monospace; padding:18px 0; }
+    .spinner { width:13px; height:13px; border:2px solid var(--border); border-top-color:var(--gold); border-radius:50%; animation:spin 0.75s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* two-col layout */
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:800px; }
+    @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+    /* divider */
+    .divider { border:none; border-top:1px solid var(--border); margin:22px 0; }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-inline">
+      <div class="logo-box">L</div>
+      <div>
+        <div class="logo-text">LMS</div>
+        <div class="logo-sub-text">Admin Console</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-badge">
+    <div class="role-tag">admin</div>
+    <div class="uname" id="sb-username">—</div>
+  </div>
+
+  <nav>
+    <div class="nav-label">Dashboard</div>
+    <div class="nav-item active" onclick="nav('overview',this)">
+      <span class="ic">⊞</span> Overview
+    </div>
+
+    <div class="nav-label">Loan Management</div>
+    <div class="nav-item" onclick="nav('pending',this)">
+      <span class="ic">◎</span> Pending Loans
+    </div>
+    <div class="nav-item" onclick="nav('user-loans',this)">
+      <span class="ic">≡</span> User Loans
+    </div>
+    <div class="nav-item" onclick="nav('loan-action',this)">
+      <span class="ic">✓</span> Loan Decision
+    </div>
+
+    <div class="nav-label">User Management</div>
+    <div class="nav-item" onclick="nav('all-users',this)">
+      <span class="ic">⊹</span> All Users
+    </div>
+    <div class="nav-item" onclick="nav('admin-mgmt',this)">
+      <span class="ic">★</span> Admin Management
+    </div>
+    <div class="nav-item" onclick="nav('terminate',this)">
+      <span class="ic">✕</span> Terminate Account
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="logout-btn" onclick="logout()"><span>⎋</span> Sign out</div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <span class="page-title" id="page-title">Overview</span>
+    <div class="topbar-right">
+      <span class="admin-chip">Admin Access</span>
+      <span class="live-dot"></span> Active
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="panel active" id="panel-overview">
+      <div class="panel-title">Admin Overview</div>
+      <div class="panel-desc">System-wide snapshot of users and activity.</div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-lbl">Total Users</div>
+          <div class="stat-val" id="s-users">—</div>
+          <div class="stat-hint">registered</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Admins</div>
+          <div class="stat-val" id="s-admins">—</div>
+          <div class="stat-hint">privileged accounts</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Regular Users</div>
+          <div class="stat-val" id="s-regular">—</div>
+          <div class="stat-hint">borrowers</div>
+        </div>
+      </div>
+
+      <div class="sec-head">All Users</div>
+      <div id="ov-users"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+    </div>
+
+    <!-- PENDING LOANS -->
+    <div class="panel" id="panel-pending">
+      <div class="panel-title">Pending Loan Applications</div>
+      <div class="panel-desc">Review loans awaiting approval by user ID.</div>
+
+      <div class="search-row">
+        <div>
+          <label>User ID</label>
+          <input type="text" id="pend-uid" placeholder="user ID" />
+        </div>
+        <button class="btn" onclick="loadPending()">Fetch</button>
+      </div>
+      <div id="pending-wrap"><p class="empty">Enter a user ID to view their pending loans.</p></div>
+    </div>
+
+    <!-- USER LOANS -->
+    <div class="panel" id="panel-user-loans">
+      <div class="panel-title">User Loan Portfolio</div>
+      <div class="panel-desc">View all loans for any user by their ID.</div>
+
+      <div class="search-row">
+        <div>
+          <label>User ID</label>
+          <input type="text" id="ul-uid" placeholder="user ID" />
+        </div>
+        <button class="btn" onclick="loadUserLoans()">Fetch Loans</button>
+      </div>
+      <div id="ul-wrap"><p class="empty">Enter a user ID to view their loans.</p></div>
+    </div>
+
+    <!-- LOAN DECISION -->
+    <div class="panel" id="panel-loan-action">
+      <div class="panel-title">Loan Decision</div>
+      <div class="panel-desc">Approve or reject a specific loan by ID.</div>
+
+      <div class="form-card">
+        <div class="field">
+          <label>Loan ID</label>
+          <input type="text" id="la-lid" placeholder="loan ID" />
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-success" onclick="loanDecision('approve')">Approve Loan</button>
+          <button class="btn btn-danger"  onclick="loanDecision('reject')">Reject Loan</button>
+        </div>
+        <div class="msg" id="la-msg"></div>
+      </div>
+    </div>
+
+    <!-- ALL USERS -->
+    <div class="panel" id="panel-all-users">
+      <div class="panel-title">All Users</div>
+      <div class="panel-desc">Full directory of registered accounts.</div>
+      <div id="all-users-wrap"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+    </div>
+
+    <!-- ADMIN MANAGEMENT -->
+    <div class="panel" id="panel-admin-mgmt">
+      <div class="panel-title">Admin Management</div>
+      <div class="panel-desc">Create admins or change user roles.</div>
+
+      <div class="two-col">
+        <!-- Add new admin -->
+        <div class="form-card">
+          <div class="sec-head">Create New Admin Account</div>
+          <div class="field">
+            <label>Username</label>
+            <input type="text" id="na-user" placeholder="admin username" />
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="na-pass" placeholder="••••••••" />
+          </div>
+          <button class="btn" onclick="addAdmin()">Create Admin</button>
+          <div class="msg" id="na-msg"></div>
+        </div>
+
+        <!-- Promote / Demote -->
+        <div class="form-card">
+          <div class="sec-head">Promote User → Admin</div>
+          <div class="field">
+            <label>User ID to promote</label>
+            <input type="text" id="ma-uid" placeholder="user ID" />
+          </div>
+          <button class="btn" onclick="makeAdmin()">Grant Admin Role</button>
+          <div class="msg" id="ma-msg"></div>
+
+          <hr class="divider" />
+
+          <div class="sec-head">Revoke Admin Role</div>
+          <div class="field">
+            <label>User ID to demote</label>
+            <input type="text" id="ra-uid" placeholder="user ID" />
+          </div>
+          <button class="btn btn-ghost" onclick="removeAdmin()">Remove Admin Role</button>
+          <div class="msg" id="ra-msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TERMINATE -->
+    <div class="panel" id="panel-terminate">
+      <div class="panel-title">Terminate Account</div>
+      <div class="panel-desc">Permanently remove a user account.</div>
+
+      <div class="form-card">
+        <div class="warn-box">⚠ This action is irreversible. The account and all associated data will be permanently removed.</div>
+        <div class="field">
+          <label>User ID to Terminate</label>
+          <input type="text" id="term-uid" placeholder="user ID" />
+        </div>
+        <button class="btn btn-danger" onclick="terminateAccount()">Terminate Account</button>
+        <div class="msg" id="term-msg"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<script>
+  const API = '/api';
+  let currentUser = null;
+  let allUsers = [];
+
+  // ── Boot ──
+  window.addEventListener('DOMContentLoaded', () => {
+    const raw = sessionStorage.getItem('lms_user');
+    if (!raw) { window.location.href = '/'; return; }
+    try { currentUser = JSON.parse(raw); } catch { window.location.href = '/'; return; }
+    if (currentUser.type !== 'ADMIN') { window.location.href = '/'; return; }
+
+    document.getElementById('sb-username').textContent = currentUser.username;
+    loadAllUsers();
+  });
+
+  // ── Navigation ──
+  const TITLES = {
+    overview:'Overview', pending:'Pending Loans', 'user-loans':'User Loans',
+    'loan-action':'Loan Decision', 'all-users':'All Users',
+    'admin-mgmt':'Admin Management', terminate:'Terminate Account'
+  };
+  function nav(name, el) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    if (el) el.classList.add('active');
+    document.getElementById('page-title').textContent = TITLES[name] || name;
+    if (name === 'overview' || name === 'all-users') loadAllUsers();
+  }
+
+  // ── All Users ──
+  async function loadAllUsers() {
+    try {
+      const res = await fetch(`${API}/admin/users`);
+      if (!res.ok) throw new Error();
+      allUsers = await res.json();
+      updateStats();
+      renderUsersTable('ov-users', allUsers, true);
+      renderUsersTable('all-users-wrap', allUsers, true);
+    } catch {
+      document.getElementById('ov-users').innerHTML = '<p class="empty">Failed to load users.</p>';
+    }
+  }
+
+  function updateStats() {
+    document.getElementById('s-users').textContent = allUsers.length;
+    const admins = allUsers.filter(u => u.type === 'ADMIN').length;
+    document.getElementById('s-admins').textContent = admins;
+    document.getElementById('s-regular').textContent = allUsers.length - admins;
+  }
+
+  function renderUsersTable(id, users, withActions) {
+    const el = document.getElementById(id);
+    if (!users.length) { el.innerHTML = '<p class="empty">No users found.</p>'; return; }
+    const ah = withActions ? '<th>Actions</th>' : '';
+    const rows = users.map(u => {
+      const acts = withActions ? `<td>
+        <button class="act-btn" onclick="jumpUserLoans('${u.id}')">Loans</button>
+        ${u.type === 'USER'  ? `<button class="act-btn ap"   onclick="quickMakeAdmin('${u.id}')">Make Admin</button>` : ''}
+        ${u.type === 'ADMIN' ? `<button class="act-btn rj"   onclick="quickRemoveAdmin('${u.id}')">Revoke Admin</button>` : ''}
+        <button class="act-btn term" onclick="jumpTerminate('${u.id}')">Terminate</button>
+      </td>` : '';
+      return `<tr>
+        <td style="color:var(--muted);font-size:11px">${u.id ?? '—'}</td>
+        <td>${u.username ?? '—'}</td>
+        <td><span class="badge b-${u.type}">${u.type}</span></td>
+        ${acts}
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<table class="tbl">
+      <thead><tr><th>ID</th><th>Username</th><th>Role</th>${ah}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  // ── Pending Loans ──
+  async function loadPending() {
+    const uid = document.getElementById('pend-uid').value.trim();
+    if (!uid) return;
+    document.getElementById('pending-wrap').innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
+    try {
+      const res = await fetch(`${API}/admin/userLoans/status?username=${encodeURIComponent(uid)}&status=PENDING`);
+      if (!res.ok) throw new Error();
+      const loans = await res.json();
+      renderPendingTable(loans, uid);
+    } catch {
+      document.getElementById('pending-wrap').innerHTML = '<p class="empty">Failed to load or user not found.</p>';
+    }
+  }
+
+  function renderPendingTable(loans, uid) {
+    const el = document.getElementById('pending-wrap');
+    if (!loans.length) { el.innerHTML = `<p class="empty">No pending loans for user ${uid}.</p>`; return; }
+    const rows = loans.map(l => `<tr>
+      <td>${l.loanId ?? '—'}</td>
+      <td>${l.months ?? '—'}mo</td>
+      <td>₹${fmt(l.principle)}</td>
+      <td>${rateStr(l.rate)}</td>
+      <td>₹${fmt(l.remaining)}</td>
+      <td>
+        <button class="act-btn ap"  onclick="quickApprove('${l.loanId}','pending-wrap',this)">Approve</button>
+        <button class="act-btn rj"  onclick="quickReject('${l.loanId}','pending-wrap',this)">Reject</button>
+      </td>
+    </tr>`).join('');
+    el.innerHTML = `<table class="tbl">
+      <thead><tr><th>Loan ID</th><th>Term</th><th>Principal</th><th>Rate</th><th>Remaining</th><th>Decision</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  async function quickApprove(loanId, wrap, btn) {
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const res = await fetch(`${API}/admin/approveLoan`, { method:'POST', body: new URLSearchParams({loanId}) });
+      if (res.ok) { btn.closest('tr').style.opacity='0.4'; btn.textContent='Approved'; }
+      else { btn.textContent='Failed'; btn.disabled=false; }
+    } catch { btn.textContent='Err'; btn.disabled=false; }
+  }
+
+  async function quickReject(loanId, wrap, btn) {
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const res = await fetch(`${API}/admin/rejectLoan`, { method:'POST', body: new URLSearchParams({loanId}) });
+      if (res.ok) { btn.closest('tr').style.opacity='0.4'; btn.textContent='Rejected'; }
+      else { btn.textContent='Failed'; btn.disabled=false; }
+    } catch { btn.textContent='Err'; btn.disabled=false; }
+  }
+
+  // ── User Loans ──
+  async function loadUserLoans() {
+    const uid = document.getElementById('ul-uid').value.trim();
+    if (!uid) return;
+    document.getElementById('ul-wrap').innerHTML = '<div class="loading"><div class="spinner"></div>Loading…</div>';
+    try {
+      const res = await fetch(`${API}/admin/userLoans?username=${encodeURIComponent(uid)}`);
+      if (!res.ok) throw new Error();
+      const loans = await res.json();
+      renderLoansTable('ul-wrap', loans);
+    } catch {
+      document.getElementById('ul-wrap').innerHTML = '<p class="empty">Failed to load or user not found.</p>';
+    }
+  }
+
+  function renderLoansTable(id, loans) {
+    const el = document.getElementById(id);
+    if (!loans.length) { el.innerHTML = '<p class="empty">No loans found.</p>'; return; }
+    const rows = loans.map(l => `<tr>
+      <td>${l.loanId ?? '—'}</td>
+      <td>${l.months ?? '—'}mo</td>
+      <td>₹${fmt(l.principle)}</td>
+      <td>${rateStr(l.rate)}</td>
+      <td>₹${fmt(l.remaining)}</td>
+      <td><span class="badge b-${l.status}">${l.status}</span></td>
+    </tr>`).join('');
+    el.innerHTML = `<table class="tbl">
+      <thead><tr><th>Loan ID</th><th>Term</th><th>Principal</th><th>Rate</th><th>Remaining</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  // ── Loan Decision ──
+  async function loanDecision(action) {
+    const lid = document.getElementById('la-lid').value.trim();
+    if (!lid) { showMsg('la-msg', 'Loan ID required.', 'error'); return; }
+    const endpoint = action === 'approve' ? 'approveLoan' : 'rejectLoan';
+    try {
+      const res = await fetch(`${API}/admin/${endpoint}`, { method:'POST', body: new URLSearchParams({loanId: lid}) });
+      if (res.ok) {
+        const ok = await res.json();
+        showMsg('la-msg', ok ? `Loan ${lid} ${action}d successfully.` : 'Action returned false.', ok ? 'success' : 'error');
+      } else {
+        showMsg('la-msg', 'Request failed.', 'error');
+      }
+    } catch { showMsg('la-msg', 'Connection error.', 'error'); }
+  }
+
+  // ── Admin CRUD ──
+  async function addAdmin() {
+    const u = document.getElementById('na-user').value.trim();
+    const p = document.getElementById('na-pass').value;
+    if (!u || !p) { showMsg('na-msg', 'All fields required.', 'error'); return; }
+    try {
+      const res = await fetch(`${API}/admin/addAdmin`, { method:'POST', body: new URLSearchParams({username:u, password:p}) });
+      const ok = await res.json();
+      showMsg('na-msg', ok ? 'Admin account created.' : 'Username already exists.', ok ? 'success' : 'error');
+      if (ok) { document.getElementById('na-user').value=''; document.getElementById('na-pass').value=''; loadAllUsers(); }
+    } catch { showMsg('na-msg', 'Error.', 'error'); }
+  }
+
+  async function makeAdmin() {
+    const uid = document.getElementById('ma-uid').value.trim();
+    if (!uid) { showMsg('ma-msg', 'User ID required.', 'error'); return; }
+    try {
+      const res = await fetch(`${API}/admin/makeAdmin`, { method:'POST', body: new URLSearchParams({username:uid}) });
+      const ok = await res.json();
+      showMsg('ma-msg', ok ? `User ${uid} is now an admin.` : 'Action failed.', ok ? 'success' : 'error');
+      if (ok) loadAllUsers();
+    } catch { showMsg('ma-msg', 'Error.', 'error'); }
+  }
+
+  async function removeAdmin() {
+    const uid = document.getElementById('ra-uid').value.trim();
+    if (!uid) { showMsg('ra-msg', 'User ID required.', 'error'); return; }
+    try {
+      const res = await fetch(`${API}/admin/removeAdmin`, { method:'POST', body: new URLSearchParams({username:uid}) });
+      const ok = await res.json();
+      showMsg('ra-msg', ok ? `Admin role revoked for ${uid}.` : 'Action failed.', ok ? 'success' : 'error');
+      if (ok) loadAllUsers();
+    } catch { showMsg('ra-msg', 'Error.', 'error'); }
+  }
+
+  async function terminateAccount() {
+    const uid = document.getElementById('term-uid').value.trim();
+    if (!uid) { showMsg('term-msg', 'User ID required.', 'error'); return; }
+    if (!confirm(`Permanently terminate account with ID "${uid}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`${API}/admin/terminateAccount`, { method:'POST', body: new URLSearchParams({username:uid}) });
+      const ok = await res.json();
+      showMsg('term-msg', ok ? `Account ${uid} terminated.` : 'Termination failed.', ok ? 'success' : 'error');
+      if (ok) { document.getElementById('term-uid').value = ''; loadAllUsers(); }
+    } catch { showMsg('term-msg', 'Error.', 'error'); }
+  }
+
+  // ── Shortcuts from user table ──
+  function jumpUserLoans(uid) {
+    document.getElementById('ul-uid').value = uid;
+    nav('user-loans', document.querySelectorAll('.nav-item')[3]);
+    loadUserLoans();
+  }
+  function jumpTerminate(uid) {
+    document.getElementById('term-uid').value = uid;
+    nav('terminate', document.querySelectorAll('.nav-item')[6]);
+  }
+  async function quickMakeAdmin(uid) {
+    if (!confirm(`Grant admin role to user ${uid}?`)) return;
+    await fetch(`${API}/admin/makeAdmin`, { method:'POST', body: new URLSearchParams({username:uid}) });
+    loadAllUsers();
+  }
+  async function quickRemoveAdmin(uid) {
+    if (!confirm(`Revoke admin role from user ${uid}?`)) return;
+    await fetch(`${API}/admin/removeAdmin`, { method:'POST', body: new URLSearchParams({username:uid}) });
+    loadAllUsers();
+  }
+
+  // ── Helpers ──
+  function fmt(n) { return (n ?? 0).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+  function rateStr(r) { return r != null ? (r * 100).toFixed(0) + '%' : '—'; }
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+  function logout() { sessionStorage.removeItem('lms_user'); window.location.href = '/'; }
+</script>
+</body>
+</html>

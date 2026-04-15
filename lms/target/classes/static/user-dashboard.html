@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LMS — User Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0c0e14;
+      --surface:   #13161f;
+      --border:    #1e2230;
+      --gold:      #c9a84c;
+      --gold-dim:  #7a6230;
+      --text:      #e8e6e0;
+      --muted:     #6b7280;
+      --danger:    #c0392b;
+      --success:   #27ae60;
+      --pending:   #d4a017;
+      --approved:  #27ae60;
+      --rejected:  #c0392b;
+      --closed:    #4a5568;
+      --defaulted: #e67e22;
+      --sw: 244px;
+    }
+
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; display: flex; min-height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sw); background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+    }
+
+    .sidebar-logo { padding: 26px 22px 18px; border-bottom: 1px solid var(--border); }
+    .logo-inline { display: flex; align-items: center; gap: 10px; }
+    .logo-box {
+      width: 34px; height: 34px; border: 1.5px solid var(--gold); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Serif Display', serif; font-size: 15px; color: var(--gold);
+    }
+    .logo-text { font-family: 'DM Serif Display', serif; font-size: 18px; }
+    .logo-sub-text { font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+
+    .user-badge {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      background: rgba(201,168,76,0.04);
+    }
+    .role-tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); font-family: 'DM Mono', monospace; margin-bottom: 4px; }
+    .uname { font-size: 14px; font-weight: 500; font-family: 'DM Mono', monospace; }
+
+    nav { flex: 1; padding: 14px 0; }
+    .nav-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); padding: 0 20px; margin: 12px 0 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+      cursor: pointer; color: var(--muted); font-size: 13px;
+      border-left: 2px solid transparent; transition: all 0.15s; user-select: none;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+    .nav-item.active { color: var(--gold); border-left-color: var(--gold); background: rgba(201,168,76,0.06); font-weight: 500; }
+    .nav-item .ic { width: 16px; text-align: center; font-size: 13px; }
+
+    .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+    .logout-btn { display: flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; font-size: 12px; transition: color 0.15s; }
+    .logout-btn:hover { color: var(--danger); }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--sw); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+    .topbar {
+      height: 54px; border-bottom: 1px solid var(--border); background: var(--surface);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 30px; position: sticky; top: 0; z-index: 50;
+    }
+    .page-title { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+    .topbar-right { display: flex; align-items: center; gap: 12px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+    .live-dot { width: 6px; height: 6px; background: var(--success); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .content { flex: 1; padding: 30px; }
+
+    /* panels */
+    .panel { display: none; animation: fadeIn 0.25s ease; }
+    .panel.active { display: block; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* welcome */
+    .welcome-h { font-family: 'DM Serif Display', serif; font-size: 32px; margin-bottom: 6px; }
+    .welcome-h em { color: var(--gold); font-style: italic; }
+    .welcome-sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+
+    /* stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px,1fr)); gap: 14px; margin-bottom: 30px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); padding: 18px 20px; position: relative;
+    }
+    .stat-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:var(--gold); }
+    .stat-lbl { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+    .stat-val { font-family: 'DM Serif Display', serif; font-size: 26px; }
+    .stat-hint { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: 'DM Mono', monospace; }
+
+    /* section heading */
+    .sec-head { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; padding-bottom: 9px; border-bottom: 1px solid var(--border); }
+
+    /* panel title */
+    .panel-title { font-family: 'DM Serif Display', serif; font-size: 26px; margin-bottom: 22px; }
+
+    /* form */
+    .form-card { background: var(--surface); border: 1px solid var(--border); padding: 30px; max-width: 460px; }
+    .field { margin-bottom: 18px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    label { display: block; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+    input, select {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); padding: 10px 13px;
+      font-family: 'DM Mono', monospace; font-size: 13px; outline: none; transition: border-color 0.2s; appearance: none;
+    }
+    input:focus, select:focus { border-color: var(--gold); }
+
+    .rate-hint { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 5px; }
+    .rate-hint span { color: var(--gold); }
+
+    .btn {
+      padding: 11px 26px; background: var(--gold); color: #0c0e14;
+      font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 12px;
+      letter-spacing: 0.12em; text-transform: uppercase; border: none; cursor: pointer; transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.84; }
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--border); color: var(--muted);
+    }
+    .btn-ghost:hover { border-color: var(--gold); color: var(--gold); opacity: 1; }
+
+    .msg { margin-top: 13px; padding: 9px 13px; font-size: 12px; font-family: 'DM Mono', monospace; border-left: 2px solid var(--muted); background: rgba(255,255,255,0.02); display: none; }
+    .msg.success { border-color: var(--success); color: var(--success); }
+    .msg.error   { border-color: var(--danger);  color: var(--danger); }
+    .msg.show    { display: block; }
+
+    /* status tabs */
+    .stabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .stab {
+      padding: 7px 15px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s;
+    }
+    .stab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    /* table */
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th {
+      text-align: left; padding: 9px 13px; font-size: 9px; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--surface);
+    }
+    .tbl td { padding: 12px 13px; border-bottom: 1px solid rgba(30,34,48,0.55); font-family: 'DM Mono', monospace; font-size: 12px; }
+    .tbl tr:hover td { background: rgba(255,255,255,0.012); }
+
+    .badge {
+      display: inline-block; padding: 2px 8px; font-size: 9px;
+      letter-spacing: 0.14em; text-transform: uppercase; font-family: 'DM Mono', monospace;
+    }
+    .b-PENDING   { background:rgba(212,160,23,.15); color:var(--pending); }
+    .b-APPROVED  { background:rgba(39,174,96,.15);  color:var(--approved); }
+    .b-REJECTED  { background:rgba(192,57,43,.15);  color:var(--rejected); }
+    .b-CLOSED    { background:rgba(74,85,104,.25);  color:var(--closed); }
+    .b-DEFAULTED { background:rgba(230,126,34,.15); color:var(--defaulted); }
+
+    .pay-btn {
+      padding: 4px 13px;
+      background: rgba(201,168,76,0.12); border: 1px solid var(--gold-dim); color: var(--gold);
+      font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; font-family: 'Outfit', sans-serif; font-weight: 600; transition: all 0.15s;
+    }
+    .pay-btn:hover { background: rgba(201,168,76,0.24); border-color: var(--gold); }
+
+    .empty { color: var(--muted); font-size: 13px; padding: 24px 0; }
+
+    /* spinner */
+    .loading { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; font-family: 'DM Mono', monospace; padding: 18px 0; }
+    .spinner { width: 13px; height: 13px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* modal */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); display: none; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px); }
+    .overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); padding: 34px; width: 100%; max-width: 390px; animation: fadeIn 0.2s ease; }
+    .modal-title { font-family: 'DM Serif Display', serif; font-size: 21px; margin-bottom: 20px; }
+    .modal-foot { display: flex; gap: 11px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-inline">
+      <div class="logo-box">L</div>
+      <div>
+        <div class="logo-text">LMS</div>
+        <div class="logo-sub-text">Loan Management</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="user-badge">
+    <div class="role-tag">user</div>
+    <div class="uname" id="sb-username">—</div>
+  </div>
+
+  <nav>
+    <div class="nav-label">Main</div>
+    <div class="nav-item active" id="nav-overview" onclick="nav('overview',this)">
+      <span class="ic">⊞</span> Overview
+    </div>
+    <div class="nav-label">Loans</div>
+    <div class="nav-item" id="nav-apply" onclick="nav('apply',this)">
+      <span class="ic">+</span> Apply for Loan
+    </div>
+    <div class="nav-item" id="nav-myloans" onclick="nav('myloans',this)">
+      <span class="ic">≡</span> My Loans
+    </div>
+    <div class="nav-item" id="nav-payloan" onclick="nav('payloan',this)">
+      <span class="ic">₹</span> Pay Loan
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="logout-btn" onclick="logout()"><span>⎋</span> Sign out</div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <span class="page-title" id="page-title">Overview</span>
+    <div class="topbar-right">
+      <span class="live-dot"></span> Session Active
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="panel active" id="panel-overview">
+      <div class="welcome-h">Welcome back, <em id="welcome-name">—</em></div>
+      <div class="welcome-sub">Here's a summary of your loan portfolio.</div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-lbl">Total Loans</div>
+          <div class="stat-val" id="s-total">—</div>
+          <div class="stat-hint">all time</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Active</div>
+          <div class="stat-val" id="s-active">—</div>
+          <div class="stat-hint">approved</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Pending</div>
+          <div class="stat-val" id="s-pending">—</div>
+          <div class="stat-hint">awaiting review</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Outstanding</div>
+          <div class="stat-val" id="s-remaining">—</div>
+          <div class="stat-hint">total remaining</div>
+        </div>
+      </div>
+
+      <div class="sec-head">Recent Loans</div>
+      <div id="overview-loans"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+    </div>
+
+    <!-- APPLY -->
+    <div class="panel" id="panel-apply">
+      <div class="panel-title">Apply for a Loan</div>
+      <div class="form-card">
+        <div class="field-row">
+          <div class="field">
+            <label>Principal Amount (₹)</label>
+            <input type="number" id="a-amount" placeholder="10000" min="1" step="0.01" />
+          </div>
+          <div class="field">
+            <label>Duration (months)</label>
+            <input type="number" id="a-months" placeholder="12" min="1" max="360" oninput="updateRate()" />
+          </div>
+        </div>
+        <div class="field">
+          <div class="rate-hint">Applicable rate: <span id="rate-preview">— (enter months)</span></div>
+        </div>
+        <button class="btn" onclick="applyLoan()">Submit Application</button>
+        <div class="msg" id="apply-msg"></div>
+      </div>
+    </div>
+
+    <!-- MY LOANS -->
+    <div class="panel" id="panel-myloans">
+      <div class="panel-title">My Loans</div>
+      <div class="stabs">
+        <div class="stab active" onclick="filterTab('ALL',this)">All</div>
+        <div class="stab" onclick="filterTab('PENDING',this)">Pending</div>
+        <div class="stab" onclick="filterTab('APPROVED',this)">Approved</div>
+        <div class="stab" onclick="filterTab('REJECTED',this)">Rejected</div>
+        <div class="stab" onclick="filterTab('CLOSED',this)">Closed</div>
+        <div class="stab" onclick="filterTab('DEFAULTED',this)">Defaulted</div>
+      </div>
+      <div id="loans-table-wrap"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+    </div>
+
+    <!-- PAY LOAN -->
+    <div class="panel" id="panel-payloan">
+      <div class="panel-title">Pay a Loan</div>
+      <div class="form-card">
+        <div class="field">
+          <label>Loan ID</label>
+          <input type="text" id="p-lid" placeholder="e.g. LN-0012" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Payment Amount (₹)</label>
+          <input type="number" id="p-amt" placeholder="0.00" min="0.01" step="0.01" />
+        </div>
+        <div class="rate-hint" style="margin-bottom:16px">
+          Only <span>APPROVED</span> loans are payable. Partial payments accepted.
+        </div>
+        <div style="display:flex;gap:11px;">
+          <button class="btn" onclick="directPay()">Submit Payment</button>
+          <button class="btn btn-ghost" onclick="nav('myloans',document.getElementById('nav-myloans'))">View My Loans</button>
+        </div>
+        <div class="msg" id="pay-msg"></div>
+      </div>
+
+      <div style="margin-top:26px">
+        <div class="sec-head">Active Loans — click to pre-fill</div>
+        <div id="pay-active-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- Pay from table modal -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">Make a Payment</div>
+    <div class="field">
+      <label>Loan ID</label>
+      <input type="text" id="m-lid" readonly />
+    </div>
+    <div class="field">
+      <label>Amount (₹)</label>
+      <input type="number" id="m-amt" placeholder="0.00" min="0.01" step="0.01" />
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="modalPay()">Pay Now</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+    <div class="msg" id="modal-msg"></div>
+  </div>
+</div>
+
+<script>
+  const API = '/api';
+  let currentUser = null;
+  let allLoans = [];
+  let currentFilter = 'ALL';
+
+  // ── Boot ──
+  window.addEventListener('DOMContentLoaded', () => {
+    const raw = sessionStorage.getItem('lms_user');
+    if (!raw) { window.location.href = '/'; return; }
+    try { currentUser = JSON.parse(raw); } catch { window.location.href = '/'; return; }
+
+    if (currentUser.type !== 'USER') { window.location.href = '/'; return; }
+
+    document.getElementById('sb-username').textContent = currentUser.username;
+    document.getElementById('welcome-name').textContent = currentUser.username;
+    loadLoans();
+  });
+
+  // ── Navigation ──
+  const TITLES = { overview:'Overview', apply:'Apply for Loan', myloans:'My Loans', payloan:'Pay Loan' };
+  function nav(name, el) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    if (el) el.classList.add('active');
+    document.getElementById('page-title').textContent = TITLES[name] || name;
+    if (name === 'overview' || name === 'myloans') loadLoans();
+    if (name === 'payloan') { loadLoans(); renderActiveList(); }
+  }
+
+  // ── Rate preview ──
+  function updateRate() {
+    const m = parseInt(document.getElementById('a-months').value);
+    const el = document.getElementById('rate-preview');
+    if (!m || m < 1) { el.textContent = '— (enter months)'; el.style.color = ''; return; }
+    el.textContent = m < 6 ? '12% p.a. (short-term, < 6 months)' : '10% p.a. (long-term, ≥ 6 months)';
+    el.style.color = 'var(--gold)';
+  }
+
+  // ── Apply Loan ──
+  async function applyLoan() {
+    const amount = parseFloat(document.getElementById('a-amount').value);
+    const months = parseInt(document.getElementById('a-months').value);
+    if (!amount || !months || amount <= 0 || months < 1) {
+      showMsg('apply-msg', 'Enter valid amount and duration.', 'error'); return;
+    }
+    const rate = months < 6 ? 0.12 : 0.10;
+    const params = new URLSearchParams({ principle: amount, rate, months });
+    try {
+      const res = await fetch(`${API}/user/applyLoan`, { method: 'POST', body: params });
+      if (res.ok) {
+        showMsg('apply-msg', 'Application submitted successfully.', 'success');
+        document.getElementById('a-amount').value = '';
+        document.getElementById('a-months').value = '';
+        document.getElementById('rate-preview').textContent = '— (enter months)';
+        document.getElementById('rate-preview').style.color = '';
+        loadLoans();
+      } else {
+        showMsg('apply-msg', 'Submission failed. Please try again.', 'error');
+      }
+    } catch { showMsg('apply-msg', 'Connection error.', 'error'); }
+  }
+
+  // ── Load all loans ──
+  async function loadLoans() {
+    try {
+      const res = await fetch(`${API}/user/loans`);
+      if (!res.ok) throw new Error();
+      allLoans = await res.json();
+      console.log(allLoans)
+      updateStats();
+      renderOverview();
+      renderLoansTable(currentFilter);
+      renderActiveList();
+    } catch {
+      document.getElementById('loans-table-wrap').innerHTML = '<p class="empty">Failed to load loans.</p>';
+    }
+  }
+
+  function updateStats() {
+    document.getElementById('s-total').textContent = allLoans.length;
+    document.getElementById('s-active').textContent = allLoans.filter(l => l.status === 'APPROVED').length;
+    document.getElementById('s-pending').textContent = allLoans.filter(l => l.status === 'PENDING').length;
+    const rem = allLoans.filter(l => l.status === 'APPROVED').reduce((s, l) => s + (l.remaining ?? 0), 0);
+    document.getElementById('s-remaining').textContent = '₹' + rem.toLocaleString('en-IN', {maximumFractionDigits:2});
+  }
+
+  function renderOverview() {
+    const recent = [...allLoans].slice(-6).reverse();
+    document.getElementById('overview-loans').innerHTML = loanTableHTML(recent, true);
+  }
+
+  // ── Filter tabs ──
+  function filterTab(status, el) {
+    currentFilter = status;
+    document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+    if (el) el.classList.add('active');
+    renderLoansTable(status);
+  }
+
+  function renderLoansTable(filter) {
+    const data = filter === 'ALL' ? allLoans : allLoans.filter(l => l.status === filter);
+    document.getElementById('loans-table-wrap').innerHTML = loanTableHTML(data, false);
+  }
+
+  function loanTableHTML(data, compact) {
+    if (!data.length) return '<p class="empty">No loans in this category.</p>';
+    const actHead = compact ? '' : '<th>Action</th>';
+    const rows = data.map(l => {
+      const actCell = compact ? '' : `<td>${l.status === 'APPROVED'
+        ? `<button class="pay-btn" onclick="openModal('${l.loanId}')">Pay</button>`
+        : '—'}</td>`;
+      return `<tr>
+        <td>${l.loanId ?? '—'}</td>
+        <td>${l.months ?? '—'}mo</td>
+        <td>₹${fmt(l.principle)}</td>
+        <td>${rateStr(l.rate)}</td>
+        <td>₹${fmt(l.remaining)}</td>
+        <td><span class="badge b-${l.status}">${l.status}</span></td>
+        ${actCell}
+      </tr>`;
+    }).join('');
+    return `<table class="tbl">
+      <thead><tr><th>Loan ID</th><th>Term</th><th>Principal</th><th>Rate</th><th>Remaining</th><th>Status</th>${actHead}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  // ── Active list for Pay panel ──
+  function renderActiveList() {
+    const active = allLoans.filter(l => l.status === 'APPROVED');
+    const el = document.getElementById('pay-active-list');
+    if (!active.length) { el.innerHTML = '<p class="empty">No approved loans to pay.</p>'; return; }
+    const rows = active.map(l => `<tr>
+      <td>${l.loanId}</td>
+      <td>${l.months}mo</td>
+      <td>₹${fmt(l.principle)}</td>
+      <td>${rateStr(l.rate)}</td>
+      <td>₹${fmt(l.remaining)}</td>
+      <td><button class="pay-btn" onclick="prefill('${l.loanId}')">Select</button></td>
+    </tr>`).join('');
+    el.innerHTML = `<table class="tbl">
+      <thead><tr><th>Loan ID</th><th>Term</th><th>Principal</th><th>Rate</th><th>Remaining</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  function prefill(id) {
+    document.getElementById('p-lid').value = id;
+    document.getElementById('p-amt').focus();
+  }
+
+  // ── Direct Pay (panel) ──
+  async function directPay() {
+    const lid = document.getElementById('p-lid').value.trim();
+    const amt = parseFloat(document.getElementById('p-amt').value);
+    if (!lid) { showMsg('pay-msg', 'Loan ID required.', 'error'); return; }
+    if (!amt || amt <= 0) { showMsg('pay-msg', 'Enter a valid amount.', 'error'); return; }
+    await submitPay(lid, amt, 'pay-msg', () => {
+      document.getElementById('p-amt').value = '';
+      loadLoans();
+    });
+  }
+
+  // ── Modal Pay ──
+  function openModal(lid) {
+    document.getElementById('m-lid').value = lid;
+    document.getElementById('m-amt').value = '';
+    document.getElementById('modal-msg').className = 'msg';
+    document.getElementById('modal').classList.add('open');
+  }
+  function closeModal() { document.getElementById('modal').classList.remove('open'); }
+  async function modalPay() {
+    const lid = document.getElementById('m-lid').value;
+    const amt = parseFloat(document.getElementById('m-amt').value);
+    if (!amt || amt <= 0) { showMsg('modal-msg', 'Enter a valid amount.', 'error'); return; }
+    await submitPay(lid, amt, 'modal-msg', () => {
+      setTimeout(() => { closeModal(); loadLoans(); }, 800);
+    });
+  }
+
+  // ── Shared pay call ──
+  async function submitPay(loanId, amount, msgId, onSuccess) {
+    const params = new URLSearchParams({ loanId, amount });
+    try {
+      const res = await fetch(`${API}/user/payLoan`, { method: 'POST', body: params });
+      if (res.ok) {
+        const ok = await res.json();
+        if (ok) { showMsg(msgId, `Payment of ₹${amount.toLocaleString('en-IN')} applied.`, 'success'); onSuccess(); }
+        else     { showMsg(msgId, 'Payment failed — check loan status.', 'error'); }
+      } else {
+        showMsg(msgId, 'Request error. Loan may not be payable.', 'error');
+      }
+    } catch { showMsg(msgId, 'Connection error.', 'error'); }
+  }
+
+  // ── Helpers ──
+  function fmt(n) { return (n ?? 0).toLocaleString('en-IN', {maximumFractionDigits:2}); }
+  function rateStr(r) { return r != null ? (r * 100).toFixed(0) + '%' : '—'; }
+
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+
+  function logout() {
+    sessionStorage.removeItem('lms_user');
+    window.location.href = '/';
+  }
+</script>
+</body>
+</html>
